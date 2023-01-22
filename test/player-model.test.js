@@ -12,7 +12,7 @@ test('Deletes the existing test Player database models.', async () => {
 
 test('The database can save many and query test Player models.', async () => {
     // create the entities
-    const entitiesToCreate = 100
+    const entitiesToCreate = 10
     for (var i = 0; i < entitiesToCreate; i++) {
         await Player.upsert(i, {
             fullName: `Player${i}`

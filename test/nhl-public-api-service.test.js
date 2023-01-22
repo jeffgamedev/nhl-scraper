@@ -34,7 +34,6 @@ test('The NHL Public API People Stats returns single season stats data.', async 
     const stat = await nhlApi.getPlayerStats(8476792, '20182019')
     expect(stat['hits']).toBe(53)
     expect(stat['goals']).toBe(6)
-    console.log(stat)
 })
 
 test('The NHL Public API Seasons returns an array of seasons data.', async () => {
