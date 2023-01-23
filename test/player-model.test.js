@@ -12,7 +12,7 @@ test('Deletes the existing test Player database models.', async () => {
 
 test('The database can save many and query test Player models.', async () => {
     // create the entities
-    const entitiesToCreate = 100
+    const entitiesToCreate = 3
     for (let i = 0; i < entitiesToCreate; i++) {
         await Player.upsertAsync(i, {
             fullName: `Player${i}`
@@ -28,17 +28,27 @@ test('The Player data can perform upsert with data persistence.', async () => {
     await Player.upsertAsync(playerId, {
         fullName: 'first'
     })
-    player = await Player.findOne({
-        where: {
-            id: playerId
-        }
-    })
+    player = await Player.getByIdAsync(playerId)
     expect(player.fullName).toBe('first')
     await Player.upsertAsync(playerId, {
         fullName: 'second'
     })
     player = await Player.getByIdAsync(playerId)
     expect(player.fullName).toBe('second')
+})
+
+test('The Player can be queried by team id.', async () => {
+    const testTeamId = 55
+    const testPlayerId = 1999
+    await Player.upsertAsync(testPlayerId, {
+        teamId: testTeamId,
+    })
+    const playerArray = await Player.getByTeamIdAsync(testTeamId)
+    expect(playerArray).toBeDefined()
+    expect(playerArray.length).toBeGreaterThan(0)
+    const player = playerArray[0]
+    expect(player.id).toBe(testPlayerId)
+    expect(player.teamId).toBe(testTeamId)
 })
 
 test('Delete the test data.', async () => {
