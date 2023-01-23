@@ -48,6 +48,7 @@ class Player extends Model {
    * @returns Player entity or null.
    */
   static async getByIdAsync(queryId) {
+    await this.sync()
     return await this.findOne({
         where: {
             id: queryId
@@ -60,6 +61,7 @@ class Player extends Model {
    * @returns an array of player entities.
    */
   static async getByTeamIdAsync(queryId) {
+    await this.sync()
     return await this.findAll({
         where: {
             teamId: queryId
