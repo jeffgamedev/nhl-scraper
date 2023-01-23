@@ -4,7 +4,12 @@ class NhlPublicApiService {
     constructor() {
         this.baseUrl = 'https://statsapi.web.nhl.com'
     }
-    async makeGetRequest(path) {
+    /**
+     * Async request against the NHL API at the provided path.
+     * @param {String} path NHL API path string, eg "/v1/api/..."
+     * @returns the request response
+     */
+    async makeGetRequestAsync(path) {
         try {
             path = this.baseUrl.concat(path)
             return await axios.get(path)
@@ -12,24 +17,40 @@ class NhlPublicApiService {
             return error.response
         }
     }
-    async getTodaySchedule() {
-        return await this.makeGetRequest('/api/v1/schedule')
+    /**
+     * Async requests the NHL API schedule for today.
+     * @returns The NHL API schedule for today.
+     */
+    async getTodayScheduleAsync() {
+        return await this.makeGetRequestAsync('/api/v1/schedule')
     }
-    async getGameStatus() {
-        return await this.makeGetRequest('/api/v1/gameStatus')
+    /**
+     * Async requests the NHL API game status types.
+     * @returns The NHL API game status types.
+     */
+    async getGameStatusAsync() {
+        return await this.makeGetRequestAsync('/api/v1/gameStatus')
     }
-    async getSeasons() {
-        const result = await this.makeGetRequest('/api/v1/seasons')
+    /**
+     * Async request for the NHL API seasons data.
+     * @returns NHL API seasons data.
+     */
+    async getSeasonsAsync() {
+        const result = await this.makeGetRequestAsync('/api/v1/seasons')
         const data = result['data']
         if (data && Array.isArray(data['seasons'])) {
             return data['seasons']
         }
         return []
     }
-    async getCurrentSeason() {
+    /**
+     * Async request for the current season ID.
+     * @returns the current NHL season ID or null.
+     */
+    async getCurrentSeasonAsync() {
         const now = new Date()
         const nowTime = now.getTime()
-        const seasons = await this.getSeasons()
+        const seasons = await this.getSeasonsAsync()
         for (let i = 0; i < seasons.length; i++) {
             const season = seasons[i]
             const endDate = new Date(season['regularSeasonEndDate'])
@@ -40,18 +61,29 @@ class NhlPublicApiService {
         }
         return null
     }
-    async getPlayer(id) {
-        const result = await this.makeGetRequest('/api/v1/people/'.concat(String(id)))
+    /**
+     * Async request for a player's information.
+     * @param {Number} id Player ID.
+     * @returns Player information or null.
+     */
+    async getPlayerAsync(id) {
+        const result = await this.makeGetRequestAsync('/api/v1/people/'.concat(String(id)))
         const data = result['data']
         if (data && Array.isArray(data['people']) && data['people'].length > 0) {
             return result['data']['people'][0]
         }
         return null
     }
-    async getPlayerStats(id, season) {
+    /**
+     * Async request for a player's stats during a season.
+     * @param {Number} id player id
+     * @param {String} season season ID
+     * @returns Player stats or null.
+     */
+    async getPlayerStatsAsync(id, season) {
         let uri = '/api/v1/people/'.concat(String(id).concat('/stats'))
         uri = uri.concat('?stats=statsSingleSeason&season='.concat(season))
-        const result = await this.makeGetRequest(uri)
+        const result = await this.makeGetRequestAsync(uri)
         const data = result['data']
         if (!data || !Array.isArray(data['stats']) || data['stats'].length == 0 || data['stats'][0].length == 0) {
             return null
@@ -61,11 +93,12 @@ class NhlPublicApiService {
         }
         return data['stats'][0]['splits'][0]['stat']
     }
-    async getPlayTypes() {
-        return await this.makeGetRequest('/api/v1/playTypes')
-    }
-    async getGameFeed(feedUrl) {
-        return await this.makeGetRequest(feedUrl)
+    /**
+     * Async request for the play types data.
+     * @returns The NHL API play types data.
+     */
+    async getPlayTypesAsync() {
+        return await this.makeGetRequestAsync('/api/v1/playTypes')
     }
 }
 

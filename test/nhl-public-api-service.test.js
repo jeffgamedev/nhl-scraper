@@ -7,42 +7,42 @@ test('The NHL Public API base url is correct.', () => {
 })
 
 test('The NHL Public API returns a 404 on a naked route.', async () => {
-    const response = await nhlApi.makeGetRequest('')
+    const response = await nhlApi.makeGetRequestAsync('')
     expect(response['status']).toBe(404)
 })
 
 test('The NHL Public API Today\'s Schedule returns a data payload with a copyright property.', async () => {
-    const schedule = await nhlApi.getTodaySchedule()
+    const schedule = await nhlApi.getTodayScheduleAsync()
     expect(schedule['status']).toBe(200)
     expect(schedule['data']['copyright']).toContain('NHL')
 })
 
 test('The NHL Public API Play Types returns a list of information.', async () => {
-    const playTypes = await nhlApi.getPlayTypes()
+    const playTypes = await nhlApi.getPlayTypesAsync()
     expect(playTypes['status']).toBe(200)
     expect(playTypes['data']).toBeInstanceOf(Array)
     expect(playTypes['data'].length).toBeGreaterThanOrEqual(26)
 })
 
 test('The NHL Public API People returns player data.', async () => {
-    const player = await nhlApi.getPlayer(8476792)
+    const player = await nhlApi.getPlayerAsync(8476792)
     expect(player['fullName']).toBe('Torey Krug')
     expect(player['birthStateProvince']).toBe('MI')
 })
 
 test('The NHL Public API People Stats returns single season stats data.', async () => {
-    const stat = await nhlApi.getPlayerStats(8476792, '20182019')
+    const stat = await nhlApi.getPlayerStatsAsync(8476792, '20182019')
     expect(stat['hits']).toBe(53)
     expect(stat['goals']).toBe(6)
 })
 
 test('The NHL Public API Seasons returns an array of seasons data.', async () => {
-    const seasons = await nhlApi.getSeasons()
+    const seasons = await nhlApi.getSeasonsAsync()
     expect(seasons.length).toBeGreaterThanOrEqual(100)
 })
 
 test('The NHL Public API Get current season may return a season or null.', async () => {
-    const season = await nhlApi.getCurrentSeason()
+    const season = await nhlApi.getCurrentSeasonAsync()
     if (season != null) {
         const now = new Date()
         const fullYearString = String(now.getFullYear())

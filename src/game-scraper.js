@@ -1,23 +1,31 @@
-require('dotenv').config()
-
 const Player = require('../src/models/player')
 const NhlPublicApiService = require('../src/nhl-public-api-service')
+
 const nhlApi = new NhlPublicApiService()
-const timeout = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000));
-const gameCheckIntervalSeconds = 20 // refresh every interval
+const timeoutAsync = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+
+const gameCheckIntervalSeconds = 20
 const verbose = process.env.VERBOSE_SCRAPER === 'true'
+
 let dbQueue = []
 
+// entry point for individual game feed scrape routine.
 process.on('message', function(gameFeedUrl) {
-    runGameScrapeProcess(String(gameFeedUrl))
+    runGameScrapeProcessAsync(String(gameFeedUrl))
 })
 
-processDbQueue()
+// entry point for the database insertion queue.
+processDbQueueAsync()
 
-async function processDbQueue() {
+/**
+ * Async operation that processes the database queue.
+ * This process runs indefinitely and watches for database insertion requests.
+ * This allows the database to not lock up.
+ */
+async function processDbQueueAsync() {
     while (true) {
         if (dbQueue.length == 0) {
-            await timeout(3)
+            await timeoutAsync(3)
             continue
         }
         const val = dbQueue.pop()
@@ -26,66 +34,79 @@ async function processDbQueue() {
         if (verbose) {
             console.log('Saving player data '.concat(JSON.stringify(playerData)))
         }
-        await Player.upsert(playerId, playerData)
+        await Player.upsertAsync(playerId, playerData)
     }
 }
 
-async function runGameScrapeProcess(gameFeedUrl) {
+/**
+ * Async operation that scrapes from a game feed while it is still 'Live'.
+ * @param {String} gameFeedUrl The game feed url to retrieved data from.
+ */
+async function runGameScrapeProcessAsync(gameFeedUrl) {
     console.log('Start Game Scraper process: '.concat(gameFeedUrl))
-    let gameActive = true
-    while (gameActive) {
-        gameActive = await updateGameScrapeCheck(gameFeedUrl)
-        await timeout(gameCheckIntervalSeconds)
+    while (await updateCurrentGameFeedAsync(gameFeedUrl)) {
+        await timeoutAsync(gameCheckIntervalSeconds)
     }
-    console.log('Game scraper service ending: '.concat(gameFeedUrl))
+    console.log('Shutting down feed scraper service: '.concat(gameFeedUrl))
 }
 
-async function updateGameScrapeCheck(gameFeedUrl) {
-    return await updateCurrentGameFeed(gameFeedUrl)
-}
-
-// update the game check while on-season
-async function updateCurrentGameFeed(gameFeedUrl) {
-    const gameFeed = await nhlApi.getGameFeed(gameFeedUrl)
+/**
+ * Async operation that updates the current game feed, making a data request to
+ * the endpoint and storing each player info and stats provided by the feed in the database.
+ * @param {String} gameFeedUrl The game feed url to retrieved data from.
+ * @returns true if the feed is still active, otherwise false.
+ */
+async function updateCurrentGameFeedAsync(gameFeedUrl) {
+    const gameFeed = await nhlApi.makeGetRequestAsync(gameFeedUrl)
     if (!gameFeed || !gameFeed['data'] || !gameFeed['data']['gameData']) {
         console.log('Invalid game feed response, quitting scraper: '.concat(gameFeedUrl))
         return false
     }
     const gameData = gameFeed['data']['gameData']
     if (gameData['status']['abstractGameState'] != 'Live') {
-        console.log('Game has ended. Shutting down scraper: '.concat(gameFeedUrl))
+        console.log('Game has ended: '.concat(gameFeedUrl))
         return false
     }
     const currentSeason = gameData['game']['season']
     const boxscore = gameFeed['data']['liveData']['boxscore']
-    const homeStats = boxscore['teams']['home']['players']
-    const awayStats = boxscore['teams']['away']['players']
-    await scrapeAllPlayerData(gameData['players'], gameData['teams'], homeStats, awayStats, currentSeason)
+    await scrapeAllPlayerDataAsync(gameData, boxscore, currentSeason)
     return true
 }
 
-async function scrapeAllPlayerData(playersDict, teams, homeStats, awayStats, currentSeason) {
+/**
+ * Async operation that scrapes all player data from the provided dictionaries.
+ * @param {Object} gameData the game data ditionary from the live stream.
+ * @param {Object} boxscore the boxscore stats dictionary from the live stream.
+ * @param {String} currentSeason the current season string id.
+ */
+async function scrapeAllPlayerDataAsync(gameData, boxscore, currentSeason) {
+    const teams = gameData['teams']
+    const playersDict = gameData['players']
     const playerKeys = Object.keys(playersDict)
     for (let i = 0; i < playerKeys.length; i++) {
         let playerKey = playerKeys[i]
         let player = playersDict[playerKey]
-        await scrapePlayerData(player, teams, homeStats, awayStats, currentSeason)
-        await timeout(0.2)
+        await scrapePlayerDataAsync(player, teams, boxscore, currentSeason)
+        await timeoutAsync(0.2)
     }
 }
 
-async function scrapePlayerData(player, teams, homeStats, awayStats, currentSeason) {
-    let playerId = player['id']
-    const strId = 'ID'.concat(playerId)
-    let stats = null
-    if (homeStats[strId]) {
-        stats = homeStats[strId]['stats']['skaterStats']
-    } else if (awayStats[strId]) {
-        stats = awayStats[strId]['stats']['skaterStats']
-    }
-    let homeTeamId = teams['home']['id']
-    let awayTeamId = teams['away']['id']
-    let playerTeamId = player['currentTeam']['id']
+/**
+ * Async operation to store the provided player data from a live stream.
+ * Finds the player's live feed stats from the boxscore and opposing team from the teams.
+ * @param {Object} player the player dictionary of data to store.
+ * @param {Object} teams the teams dictionary from the live stream.
+ * @param {Object} boxscore the boxscore stats dictionary from the live stream.
+ * @param {String} currentSeason the current season string id.
+ */
+async function scrapePlayerDataAsync(player, teams, boxscore, currentSeason) {
+    const playerId = player['id']
+    const playerStrId = 'ID'.concat(playerId)
+    const homeTeamId = teams['home']['id']
+    const awayTeamId = teams['away']['id']
+    const homeStats = boxscore['teams']['home']['players']
+    const awayStats = boxscore['teams']['away']['players']
+    const playerTeamId = player['currentTeam']['id']
     let data = {
         'fullName': player['fullName'],
         'currentAge': player['currentAge'],
@@ -95,6 +116,12 @@ async function scrapePlayerData(player, teams, homeStats, awayStats, currentSeas
         'teamName': player['currentTeam']['name'],
         'currentOpponentTeam': (homeTeamId == playerTeamId) ? awayTeamId : homeTeamId
     }
+    let stats = null
+    if (homeStats[playerStrId]) {
+        stats = homeStats[playerStrId]['stats']['skaterStats']
+    } else if (awayStats[playerStrId]) {
+        stats = awayStats[playerStrId]['stats']['skaterStats']
+    }
     if (stats) {
         data['hits'] = stats['hits']
         data['goals'] = stats['goals']
@@ -103,11 +130,11 @@ async function scrapePlayerData(player, teams, homeStats, awayStats, currentSeas
         data['penaltyMinutes'] = stats['penaltyMinutes']
     }
     // points is not in the live feed.. so we need to scrape it from the season stats endpoint.
-    const playerSeasonStats = await nhlApi.getPlayerStats(playerId, currentSeason)
     data['points'] = 0
+    const playerSeasonStats = await nhlApi.getPlayerStatsAsync(playerId, currentSeason)
     if (playerSeasonStats) {
         data['points'] = playerSeasonStats['points']
     }
-    // await Player.upsert(playerId, player)
+    // Queue the data for storage when the database is ready.
     dbQueue.push([playerId, data])
 }

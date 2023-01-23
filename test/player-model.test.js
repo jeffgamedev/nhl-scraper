@@ -5,16 +5,16 @@ require('dotenv').config({
 const Player = require('../src/models/player')
 
 test('Deletes the existing test Player database models.', async () => {
-    await Player.deleteAll()
+    await Player.deleteAllAsync()
     const players = await Player.findAll()
     expect(players.length).toBe(0)
 })
 
 test('The database can save many and query test Player models.', async () => {
     // create the entities
-    const entitiesToCreate = 10
-    for (var i = 0; i < entitiesToCreate; i++) {
-        await Player.upsert(i, {
+    const entitiesToCreate = 100
+    for (let i = 0; i < entitiesToCreate; i++) {
+        await Player.upsertAsync(i, {
             fullName: `Player${i}`
         })
     }
@@ -25,7 +25,7 @@ test('The database can save many and query test Player models.', async () => {
 test('The Player data can perform upsert with data persistence.', async () => {
     let player = null
     const playerId = 999
-    await Player.upsert(playerId, {
+    await Player.upsertAsync(playerId, {
         fullName: 'first'
     })
     player = await Player.findOne({
@@ -34,19 +34,15 @@ test('The Player data can perform upsert with data persistence.', async () => {
         }
     })
     expect(player.fullName).toBe('first')
-    await Player.upsert(playerId, {
+    await Player.upsertAsync(playerId, {
         fullName: 'second'
     })
-    player = await Player.findOne({
-        where: {
-            id: playerId
-        }
-    })
+    player = await Player.getByIdAsync(playerId)
     expect(player.fullName).toBe('second')
 })
 
 test('Delete the test data.', async () => {
-    await Player.deleteAll()
+    await Player.deleteAllAsync()
     const players = await Player.findAll()
     expect(players.length).toBe(0)
 })
