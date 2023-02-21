@@ -2,7 +2,7 @@ const Player = require('../src/models/player')
 const NhlPublicApiService = require('../src/nhl-public-api-service')
 
 const nhlApi = new NhlPublicApiService()
-const timeoutAsync = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+const timeoutAsync = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000))
 
 const gameCheckIntervalSeconds = 20
 const verbose = process.env.VERBOSE_SCRAPER === 'true'

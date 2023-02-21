@@ -3,7 +3,7 @@ const NhlPublicApiService = require('../src/nhl-public-api-service')
 
 const nhlApi = new NhlPublicApiService()
 const scraperProcess = ChildProcess.fork('src/game-scraper')
-const timeoutAsync = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+const timeoutAsync = seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000))
 
 const gameCheckIntervalSeconds = 60 // check every 1 minute for game in-season.
 const offSeasonIntervalSeconds = 3600 // check every 1 hour for season change.
